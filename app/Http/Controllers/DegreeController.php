@@ -426,8 +426,17 @@ class DegreeController extends Controller
             $q->where('isGrad', "=", false);
         }])->get();
         return $deg;
-
     }
+
+    //New Finction
+    public function Get($id){
+        
+        $deg = Degree::whereHas('courses')->orderBy('course_id')
+        ->with("student:id,name_ar")->get();
+        return $deg;
+    }
+
+    
     public function getStudentDegrees(Request $request)
     {
         $request->validate([
