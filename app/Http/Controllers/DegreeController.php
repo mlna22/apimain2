@@ -429,13 +429,12 @@ class DegreeController extends Controller
     }
 
     //New Finction
-    public function Get($id){
-        
-        $deg = Degree::whereHas('courses')->orderBy('course_id')
-        ->with("student:id,name_ar")->get();
+    public function Get($course_id){
+        $course = Course::find($course_id);
+        $year= $course->year;
+        $deg = Degree::whereHas('student')->where('course_id',$course_id)->with('student:id,name_ar')->get();
         return $deg;
     }
-
     
     public function getStudentDegrees(Request $request)
     {
