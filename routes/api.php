@@ -74,8 +74,7 @@ Route::get('/degrees/getall', [DegreeController::class, 'getAllDegrees']);
 Route::get('/degrees/getyear', [DegreeController::class, 'getYearDegrees']);
 Route::post('/degrees/grad', [DegreeController::class, 'grads']);
 Route::post('/degrees/pass', [DegreeController::class, 'pass']);
-Route::get('/degrees/get/{year}', [DegreeController::class, 'get']);
-
+Route::get('/degrees/test/{course_id}', [DegreeController::class, 'get']);
 
 
 Route::post('/semesters/end', [SemesterController::class, 'end']);
