@@ -25,11 +25,12 @@ class CreateStudentsTable extends Migration
             $table->decimal('avg5')->nullable();
             $table->boolean('isGrad')->default(false);
             $table->enum('level',['bachaelor','master','pHD']);
-            $table->enum('year',['first','second','third','fourth']);
+            $table->enum('year',['first','second','third','fourth','master','pHD']);
             $table->string('note')->nullable();
             $table->timestamps();
         });
     }
+    
     
 
     /**

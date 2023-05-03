@@ -19,7 +19,7 @@ class CreateCoursesTable extends Migration
             $table->unsignedBigInteger('instructor_id');
             $table->boolean('isCounts')->default(true);
             $table->enum('level',['bachaelor','master','pHD']);
-            $table->enum('year',['first','second','third','fourth']);
+            $table->enum('year',['first','second','third','fourth','master','pHD']);
             $table->string('name_ar')->nullable();
             $table->string('name_en');
             $table->string('code');
