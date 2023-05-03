@@ -28,7 +28,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::get('/students', [StudentController::class, 'showAll']);
+Route::get('/students/{year}', [StudentController::class, 'showAll']);
 Route::post('/students/grad', [StudentController::class, 'grad']);
 Route::post('/students/attend',[StudentController::class,'attendency']);
 Route::post('/students/create', [StudentController::class, 'create']);
@@ -39,16 +39,20 @@ Route::post('/students/update',[StudentController::class,'update']);
 Route::get('/students/getCurAvg',[StudentController::class,'getCurAvg']);
 
 
+
 Route::get('/instructors', [InstructorController::class, 'showAll']);
 Route::post('/instructors/create', [InstructorController::class, 'create']);
 Route::post('/instructors/destroy/{id}', [InstructorController::class, 'destroy']);
 Route::post('/instructors/update', [InstructorController::class, 'update']);
 
+Route::get('degrees/exfourty/', [DegreeController::class, 'exportfourty']);
 Route::get('degrees/excourse/', [DegreeController::class, 'exportcourse']);
+Route::get('degrees/exstu/', [DegreeController::class, 'exportresult']);
 
 
 Route::post('/courses/create', [CourseController::class, 'create']);
-Route::get('/courses/level', [CourseController::class, 'showLevel']);
+Route::get('/courses/year', [CourseController::class, 'showYear']);
+Route::get('/courses/students/{id}', [CourseController::class, 'showStudents']);
 Route::get('/courses', [CourseController::class, 'showCurrent']);
 Route::get('/courses/all', [CourseController::class, 'showAll']);
 Route::post('/courses/update', [CourseController::class, 'update']);
@@ -64,17 +68,17 @@ Route::post('/degrees/addhelp', [HelpController::class, 'addhelp']);
 Route::get('/degrees/helpstu', [HelpController::class, 'helpstu']);
 
 
-Route::get('/degrees', [DegreeController::class, 'getDegrees']);
+Route::get('/degrees', [DegreeController::class, 'getDegrees']);//
+Route::get('/degrees/test/{course_id}', [DegreeController::class, 'get']);
 Route::get('/degrees/fourty', [DegreeController::class, 'getForty']);
 Route::post('/degrees/cacl', [DegreeController::class, 'countDegree']);
 Route::post('/degrees/cacl1', [DegreeController::class, 'countfirst']);
 Route::post('/degrees/student', [DegreeController::class, 'getStudentDegrees']);
 Route::post('/degrees/create', [DegreeController::class, 'createStudentDegrees']);
-Route::get('/degrees/getall', [DegreeController::class, 'getAllDegrees']);
-Route::get('/degrees/getyear', [DegreeController::class, 'getYearDegrees']);
+Route::get('/degrees/getall', [DegreeController::class, 'getAllDegrees']);//
+Route::get('/degrees/getyear', [DegreeController::class, 'getYearDegrees']);//
 Route::post('/degrees/grad', [DegreeController::class, 'grads']);
 Route::post('/degrees/pass', [DegreeController::class, 'pass']);
-Route::get('/degrees/test/{course_id}', [DegreeController::class, 'get']);
 
 
 Route::post('/semesters/end', [SemesterController::class, 'end']);
