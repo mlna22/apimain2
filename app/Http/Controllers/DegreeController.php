@@ -20,12 +20,10 @@ class DegreeController extends Controller
     public function getDegrees(Request $request)
     {
         $deg = Degree::whereHas('courses', function ($q) {
-            $semester = Semester::select('*')->get()->last();
-            $id = $semester->id;
-            $q->where('semester_id', '=', $id);
         })->with("courses")->with("student")->get();
         return $deg;
     }
+
     
     public function getAllDegrees(Request $request)
     {
@@ -167,31 +165,28 @@ class DegreeController extends Controller
         } else {
 
             //register that the process is calculated for the level, prevents it from happening twice.
-            /*switch ($request->level) {
-            case "bachaelor":{
-            $semester->bcalc = true;
-            break;}
-            case "master":{ $semester->mcalc = true;
-            break;}
-            case "pHD":{ $semester->pcalc = true;
-            break;}
+            switch ($request->level) {
+                case "bachaelor":{
+                        $semester->bcalc = true;
+                        break;}
+                case "master":{ $semester->mcalc = true;
+                        break;}
+                case "pHD":{ $semester->pcalc = true;
+                        break;}
             }
             $semester->save();
-            */
 
             //the process is performed for each student.
-            $stu = Student::select('*')->where("level", "=", "$request->level")->where('isGrad', '=', false)->where("isEnded", "=", false)->get();
+            $stu = Student::select('*')->where("level", "=", "$request->level")->where('isGrad','=',false)->where("isEnded", "=", false)->get();
             foreach ($stu as $stu) {
 
-                //get average of student for courses only INSIDE their year. 
+                //get average of student for courses only INSIDE their year. (no carries or attends)
                 $degrees = Degree::select("*")->whereHas('courses', function ($q) use ($semester) {
                     $year = $semester->year;
                     $q->where("isCounts", "=", true)->whereHas('semester', function ($q) use ($year) {
                         $q->where("year", "=", "$year");
-                    }
-                    );
+                    });
                 })->where("student_id", "=", "$stu->id")->get();
-
                 $sum = 0;
                 $final = 0;
                 $unit = 0;
@@ -208,11 +203,10 @@ class DegreeController extends Controller
                     $final = $final * $units->unit;
                     $sum = $final + $sum;
                 }
-                /*
                 //save average of student
                 $avg = $sum / $unit;
                 $this->setAvg($stu, $avg);
-                */
+
                 //Determine the average of the courses the student carries
                 $carries = Carry::select("*")->where("student_id", "=", "$stu->id")->get();
                 if ($carries == '[]') {
@@ -252,8 +246,7 @@ class DegreeController extends Controller
                     $year = $semester->year;
                     $q->whereHas('semester', function ($q) use ($year) {
                         $q->where("year", "=", "$year")->where("number", "=", "first");
-                    }
-                    );
+                    });
                 })->where("student_id", "=", "$stu->id")->where("sts", "=", "fail")->get();
 
                 $failed1 = count($fails1);
@@ -266,8 +259,7 @@ class DegreeController extends Controller
                             'course_id' => $failedcourse,
                             'student_id' => $stu->id,
                             'attend_carry' => 'carry',
-                        ]);
-                    }
+                        ]);}
 
                 }
 
@@ -276,8 +268,7 @@ class DegreeController extends Controller
                     $year = $semester->year;
                     $q->whereHas('semester', function ($q) use ($year) {
                         $q->where("year", "=", "$year")->where("number", "=", "second");
-                    }
-                    );
+                    });
                 })->where("student_id", "=", "$stu->id")->where("sts", "=", "fail")->get();
                 $failed2 = count($fails2);
                 //set carried courses
@@ -288,27 +279,24 @@ class DegreeController extends Controller
                             'course_id' => $failedcourse,
                             'student_id' => $stu->id,
                             'attend_carry' => 'carry',
-                        ]);
-                    }
+                        ]);}
 
                 }
                 $failed = false;
                 if ($request->passavg != "" && $avg < $request->passavg) {
                     $failed = true;
+                }
+                //Pass or graduate student
+                if ($stu->year == $request->grad_year && $failed1 == 0 && $failed2 == 0 && !$failed) {
+                    $this->grad($stu, $request->grad_year);} //move graduate to graduates table if they have no fails
 
-                } 
-                if ((($failed1 + $failed2) <= 2) && !$failed) {
+                else if (($failed1 <= 2 && $failed2 <= 2) && $stu->year != $request->grad_year && !$failed) {
                     $this->nextyear($stu); //pass student to next year if they have 2 or less fails for each semester
                 }
-
-                //Pass or graduate student
-              else if ($stu->year == $request->grad_year && $failed1 == 0 && $failed2 == 0 && !$failed) {
-                    $this->grad($stu, $request->grad_year);
-                } //move graduate to graduates table if they have no fails
-
             }
 
         }
+
     }
     public function grad($stu, $gradyear)
     {
@@ -333,8 +321,10 @@ class DegreeController extends Controller
         $avg2 = $stu->avg2;
         $avg3 = $stu->avg3;
         $avg4 = $stu->avg4;
-       
-         if ($stu->year == 'fourth') {
+        $avg5 = $stu->avg5;
+        if ($stu->year == 'fifth') {
+            return ((0.05 * $avg1) + (0.1 * $avg2) + (0.15 * $avg3) + (0.3 * $avg4) + (0.4 * $avg5));
+        } else if ($stu->year == 'fourth') {
             return ((0.1 * $avg1) + (0.2 * $avg2) + (0.3 * $avg3) + (0.4 * $avg4));
         }
     }
@@ -352,25 +342,26 @@ class DegreeController extends Controller
         } else if ($year == 'third') {
             $stu->year = 'fourth';
             $stu->save();
-        } 
-        
+        } else if ($year == 'fourth') {
+            $stu->year = 'fifth';
+            $stu->save();
+        }
     }
 
     public function setAvg($stu, $avg)
     {
         $year = $stu->year;
-        if ($year == "first") {
-            $stu->avg1 = $avg;
-        } else if ($year == "second") {
-            $stu->avg2 = $avg;
-        } else if ($year == "third") {
-            $stu->avg3 = $avg;
-        } else if ($year == "fourth") {
-            $stu->avg4 = $avg;
-        
-        }
+        $avgs = [
+            'first' => 'avg1',
+            'second' => 'avg2',
+            'third' => 'avg3',
+            'fourth' => 'avg4',
+            'fifth' => 'avg5',
+        ];
+        $stu->{$avgs[$year]} = $avg;
         $stu->save();
     }
+    
     public function setAvgYear($stu, $year, $avg)
     {
         if ($year == "first") {
@@ -381,7 +372,9 @@ class DegreeController extends Controller
             $stu->avg3 = $avg;
         } else if ($year == "fourth") {
             $stu->avg4 = $avg;
-        } 
+        } else if ($year == "fifth") {
+            $stu->avg5 = $avg;
+        }
         $stu->save();
     }
     public function getApprox($deg, $success)
@@ -426,16 +419,8 @@ class DegreeController extends Controller
             $q->where('isGrad', "=", false);
         }])->get();
         return $deg;
-    }
 
-    //New Finction
-    public function Get($course_id){
-        $course = Course::find($course_id);
-        $year= $course->year;
-        $deg = Degree::whereHas('student')->where('course_id',$course_id)->with('student:id,name_ar')->get();
-        return $deg;
     }
-    
     public function getStudentDegrees(Request $request)
     {
         $request->validate([
@@ -453,7 +438,6 @@ class DegreeController extends Controller
         ]);
         $course = Course::select('*')->where('id', '=', "$request->course_id")->first();
         $student = Student::select('*')->where('id', '=', "$request->student_id")->first();
-
         $results = Degree::where('student_id', "=", "$student->id")->where('course_id', '=', "$course->id")->first();
 
         //code...
@@ -479,7 +463,13 @@ class DegreeController extends Controller
         };
 
     }
-
+    public function Get($course_id){
+            $course = Course::find($course_id);
+            $year= $course->year;
+            $deg = Degree::whereHas('student')->where('course_id',$course_id)->with('student:id,name_ar')->get();
+            return $deg;
+        }
+        
     public function exportfourty(Request $request)
     {
         return (new FourtyExport($request))->download("coursefourty.xlsx");

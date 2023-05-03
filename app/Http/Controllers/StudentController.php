@@ -21,10 +21,10 @@ class StudentController extends Controller
     public function __construct()
     {
         $this->middleware('auth:sanctum')
-            ->only(['destroy', 'create', 'update']);
+            ->only(['destroy', /*'create',*/ 'update']);
     }
-    public function showAll(){
-        $students = Student::select('*')->where('isGrad','=',false)->get();
+    public function showAll($year){
+        $students = Student::select('*')->where("year","=",$year)->where('isGrad','=',false)->get();
         return $students;
     }
     public function getCurAvg(Request $request){
@@ -33,7 +33,7 @@ class StudentController extends Controller
             $q->where("isCounts","=",false)->whereHas('semester', function($q){
                 $q->where("isEnded","=",false);
             });
-        })->where("student_id","=","$id")->get();
+        })->where("student_id","=","$id")->paginate(10);
         $sum = 0 ;
         $final = 0; 
         $unit = 0; 
@@ -58,14 +58,14 @@ class StudentController extends Controller
         $request->validate([
             'name_ar' => 'required',
             'name_en' => 'required',
-            'level'=>'required',
+            // 'level'=>'required',
             'year' => 'required',
         ]);
         
             Student::create([
                 'name_ar' => $request->name_ar,
                 'name_en' =>  $request->name_en,
-                'level'=> $request->level,
+                // 'level'=> $request->level,
                 'year' =>  $request->year,
             ]); 
     }
@@ -77,7 +77,7 @@ class StudentController extends Controller
        foreach ($deg as $d ) {
             Degree::destroy($deg);
        }
-        return response('تم حذف الطالب بنجاح', 200);
+        return response(200);
     }
 
     public function remove($id)
@@ -86,7 +86,7 @@ class StudentController extends Controller
      $student =Student::where('id','=',"$id")->first();
      $student->isEnded = true; 
      $student->save();
-        return response('تم حذف الطالب بنجاح', 200);
+        return response(200);
     }
 
 public function update(Request $request){
@@ -94,14 +94,14 @@ public function update(Request $request){
         'id' => 'required',
         'name_ar' => 'required',
         'name_en' => 'required',
-        'level'=>'required',
+        // 'level'=>'required',
         'year' => 'required',
         'note'=> 'nullable',
     ]);
     $students = Student::select('*')->where('id','=',"$request->id")->first();
     $students->name_ar = $request->name_ar;
     $students->name_en = $request->name_en;
-    $students->level = $request->level;
+    // $students->level = $request->level;
     $students->year = $request->year;
     $students->note = $request->note;
     $students-> save();
