@@ -13,7 +13,7 @@ class HomeController extends Controller
 {
     public function counts (Request $request){
         $students=Student::SELECT('*')->get();
-        $students=$students->count();
+        $students = $students->where('isEnded', false)->where('isGrad', false)->count();
         $instuctors=Instructor::SELECT('*')->get();
         $instuctors=$instuctors->count();
         $semester=Semester::SELECT('*')->where("isEnded","=",false)->first();

@@ -6,6 +6,8 @@ namespace App\Providers;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Models\User;
+use Doctrine\DBAL\Types\Type;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -17,7 +19,16 @@ class AppServiceProvider extends ServiceProvider
     {
         //
     }
-
+    public function mapApiRoutes(){
+        Route::group([
+            'middleware' => ['api', 'cors'],
+            'namespace' => $this->namespace,
+            'prefix' => 'api',
+        ], function ($router) {
+             //Add you routes here, for example:
+             Route::apiResource('/posts','PostController');
+        });
+    }
     /**
      * Bootstrap any application services.
      *
@@ -25,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        Type::addType('enum', 'Doctrine\DBAL\Types\StringType');
         $this->registerPolicies();
         
         Gate::define('is-super', function (User $user) {

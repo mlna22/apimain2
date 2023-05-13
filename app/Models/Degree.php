@@ -33,4 +33,3 @@ class Degree extends Model
         return $this->belongsTo(Degreeh::class);
     }
 }
-

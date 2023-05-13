@@ -32,7 +32,6 @@ class CourseExport implements FromArray ,WithHeadings, WithMapping
         })->with("courses")->with(["student" => function ($q) {
             $q->where('isGrad', "=", false);
         }])->get();
-        
         //get name of each student
         $nameslist = [];
         foreach ($all as $names) {
@@ -155,7 +154,8 @@ class CourseExport implements FromArray ,WithHeadings, WithMapping
                     break;}
             case "fourth":{ $year = "المرحلة الرابعة";
                     break;}
-           
+            case "fifth":{ $year = "المرحلة الخامسة";
+                    break;}
         }
         $try=["اسم المادة",$coursename,"الوحدة",$unit,"درجة النجاح الصغرى",$success,"المرحلة الدراسية",$year,"السنة الدراسية",$semester->year,"الدور",$finalnum,"عدد الطلاب",count($all),"عدد الناجحين",$passes,"عدد الراسبين",$fails,"نسبة النجاح",((count($all) - $fails) / count($all)) * 100 . "%","معدل الدرجة",round($sums,2) . "%"];
         return [$combined,$try];

@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\User;
-use App\Exports\ProjectsExport; 
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
+
 class UserController extends Controller
 {
 
-        /**
+    /**
      * Create the controller instance.
      *
      * @return void
@@ -20,9 +20,15 @@ class UserController extends Controller
         $this->middleware('auth:sanctum')
             ->only(['destroy', 'create', 'update']);
     }
-    public function get(){
-        $users = User::select('*')->get();
-        return $users;
+    public function get(Request $request)
+    {
+        $query = User::select('*');
+        if ($request->has('search')) {
+            $query->where('name', '=', '%' . $request->input('search') . '%');
+        }
+        $data = $query->paginate(10);
+        return $data;
+
     }
     public function login(Request $request)
     {
@@ -34,26 +40,26 @@ class UserController extends Controller
         $user = User::where('email', $request->input('email'))->first();
 
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
-            return response('', 401);
+            return response(401);
         }
         $user->tokens()->delete();
         $token = $user->createToken($request->input('email'))->plainTextToken;
-
+        header('Content-Type: application/json');
         return response()->json([
             'user' => $user,
-            'role'=>$user->role,
+            'role' => $user->role,
             'access_token' => $token,
-            'token_type' => 'Bearer'
+            'token_type' => 'Bearer',
         ]);
     }
     public function create(Request $request)
     {
-       
-      $request->validate([
+
+        $request->validate([
             'email' => 'required|email',
             'name' => 'required',
             'password' => 'required',
-            'role' => 'required'
+            'role' => 'required',
         ]);
         $users = User::where('email', '=', $request->input('email'))->first();
         if ($users !== null) {
@@ -61,49 +67,47 @@ class UserController extends Controller
         }
 
         if (!Gate::allows('is-super')) {
-            
+
             return response('انت غير مخول  ', 403);
         }
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role'=>$request->role,
+            'role' => $request->role,
         ]);
-       
+
         $token = $user->createToken($request->input('email'))->plainTextToken;
 
         return response()->json([
             'access_token' => $token,
-            'token_type' => 'Bearer'
+            'token_type' => 'Bearer',
         ]);
     }
 
-    public function update(Request $request){
+    public function update(Request $request)
+    {
         $request->validate([
-            'id'=>'required',
+            'id' => 'required',
             'email' => 'required|email',
             'name' => 'required',
-            'role' => 'required'
+            'role' => 'required',
         ]);
         $users = User::where('email', '=', "$request->email")->first();
-        if ($users !== null && $users->email!=$request->email) {
+        if ($users !== null && $users->email != $request->email) {
             return response('البريد الالكتروني مأخوذ سابقا', 409);
         }
-        $users = User::select('*')->where('id','=',"$request->id")->first();
+        $users = User::select('*')->where('id', '=', "$request->id")->first();
         $users->name = $request->name;
         $users->email = $request->email;
         $users->role = $request->role;
-        $users-> save();
+        $users->save();
     }
 
-    
     public function destroy($id)
     {
         User::destroy($id);
         return response('تم حذف المستخدم بنجاح', 200);
     }
 
-
-   
 }

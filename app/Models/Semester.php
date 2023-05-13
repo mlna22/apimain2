@@ -11,7 +11,7 @@ class Semester extends Model
         'number',
         'year',
         'isEnded',
-        
+
     ];
     use HasFactory;
     public function courses()

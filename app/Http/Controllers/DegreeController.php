@@ -20,11 +20,12 @@ class DegreeController extends Controller
     public function getDegrees(Request $request)
     {
         $deg = Degree::whereHas('courses', function ($q) {
-        })->with("courses")->with("student")->get();
+            $semester = Semester::select('*')->get()->last();
+            $id = $semester->id;
+            $q->where('semester_id', '=', $id);
+        })->with("courses")->with("student")->paginate(10);
         return $deg;
     }
-
-    
     public function getAllDegrees(Request $request)
     {
         $request->validate([
@@ -153,7 +154,7 @@ class DegreeController extends Controller
     {
         $request->validate([
             "grad_year" => "required",
-            "level" => "required",
+           "level" => "required",
         ]);
         $semester = Semester::select('*')->where("isEnded", "=", "0")->first();
         if ($semester == null) {
@@ -433,43 +434,23 @@ class DegreeController extends Controller
     public function createStudentDegrees(Request $request)
     {
         $request->validate([
-            'student_id' => 'required',
-            'course_id' => 'required',
+            'id' => 'required'
         ]);
-        $course = Course::select('*')->where('id', '=', "$request->course_id")->first();
-        $student = Student::select('*')->where('id', '=', "$request->student_id")->first();
-        $results = Degree::where('student_id', "=", "$student->id")->where('course_id', '=', "$course->id")->first();
+        //$course = Course::select('*')->where('id', '=', "$request->course_id")->first();
+      //  $student = Student::select('*')->where('id', '=', "$request->student_id")->first();
 
-        //code...
-        if ($results == null) {
-
-            Degree::create([
-                'student_id' => $student->id,
-                'course_id' => $course->id,
-                'fourty' => $request->fourty,
-                'sixty1' => $request->sixty1,
-
-            ]);
-            return response('تم الاضافة', 200);
-        } else if ($results != null) {
-            $deg = Degree::select('*')->where('student_id', "=", "$student->id")->where("course_id", "=", "$course->id")->first();
+      
+            $deg = Degree::select('*')->where('id', "=", $request->id)->first();
             $deg->fourty = $request->fourty;
             $deg->sixty1 = $request->sixty1;
             $deg->sixty2 = $request->sixty2;
             $deg->sixty3 = $request->sixty3;
             $deg->save();
-            return response('تم التحديث', 200);
+            return response(200);
 
-        };
 
     }
-    public function Get($course_id){
-            $course = Course::find($course_id);
-            $year= $course->year;
-            $deg = Degree::whereHas('student')->where('course_id',$course_id)->with('student:id,name_ar')->get();
-            return $deg;
-        }
-        
+
     public function exportfourty(Request $request)
     {
         return (new FourtyExport($request))->download("coursefourty.xlsx");
@@ -483,4 +464,41 @@ class DegreeController extends Controller
         return (new YearExport($request))->download("student.xlsx");
     }
 
+    
+
+    public function Get(Request $request, $cid){
+        $course = Course::where("id",'=',$cid)->first(); 
+        $year = $course->year; 
+        $students= Student::select("*")->where("year",'=',$year)->get();
+        forEach($students as $student){
+            $results = Degree::where('student_id', "=", "$student->id")->where('course_id', '=', "$cid")->first();
+            if($results ==null){
+                Degree::create([
+                    'student_id' => $student->id,
+                    'course_id' => $course->id,
+                ]);
+            }
+        }
+        $studentCarry = Course::where('id', '=', $cid)->with("studentsCarry")->first();
+        $carries = $studentCarry->students_carry;
+        
+        if (!empty($carries)) {
+            foreach ($carries as $carry) {
+                $results = Degree::where('student_id', "=", "$carries->id")->where('course_id', '=', "$cid")->first();
+                if($results ==null){
+                    Degree::create([
+                        'student_id' => $student->id,
+                        'course_id' => $course->id,
+                    ]);
+                }
+            }
+        }
+        $this->countDegree(); 
+        $query = Degree::where('course_id', $cid)->with('student:id,name_ar');
+        if ($request->has('search')) {
+            $query->where('name_ar', 'like', '%' . $request->input('search') . '%');
+        }
+        $data = $query->paginate(10);
+        return $data;
+    }
 }

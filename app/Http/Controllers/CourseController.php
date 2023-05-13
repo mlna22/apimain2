@@ -16,7 +16,7 @@ class CourseController extends Controller
     public function __construct()
     {
         $this->middleware('auth:sanctum')
-            ->only(['destroy', /*'create',*/ 'update']);
+            ->only(['destroy', 'create', 'update']);
     }
     // public function showCurrent()
     // {
@@ -34,17 +34,17 @@ class CourseController extends Controller
     //     return $newList;
     // }
 
-    public function showCurrent()
+    public function showCurrent(Request $request,$year,$number,$semester)
     {
-        $semester = Semester::where('isEnded', '=', false)->first();
+        $semester = Semester::where("number","=",$number)->where('year','=',$semester)->first();
         $id = $semester->id;
-        $coursesQuery = Course::select('*')->where('semester_id', "=", $id);
-        $courses = $coursesQuery->paginate(10);
-
-      
-        return $courses;
+        $query = Course::select('*')->where('semester_id', "=", $id)->where("year","=",$year);
+        if ($request->has('search')) {
+            $query->where('name_en', 'like', '%' . $request->input('search') . '%');
+        }
+        $data = $query->paginate(10);
+        return $data;
     }
-
     public function showStudents($rid){
         $semester = Semester::where('isEnded', '=', false)->first();
         $id = $semester->id;
@@ -54,7 +54,7 @@ class CourseController extends Controller
 
         $newList = [];
         foreach ($courses as $course) {
-            $students = Student::select('*')->where('year', '=', $course->year)->where("isGrad", '=', false)
+            $students = Student::select('*')->where('level', '=', $course->level)->where("isGrad", '=', false)
                 ->where('year', '=', $course->year)->where('isEnded', "=", false)
                 ->get();
             $students_carry = $course->studentsCarry()->where('isEnded', '=', false)->get();
@@ -74,43 +74,35 @@ class CourseController extends Controller
     
 
     }
-  public function showAll(Request $request)
-    {
-        $year = $request->year;
-        $courses = Course::whereHas('semester', function ($q) use ($year) {
-            $q->where("year", "=", "$year");
-        })->with('instructor')->with('studentsCarry')->select('*')->get();
-        $newList = [];
-        
-        foreach ($courses as $course) {
-            $students = Student::select('*')->where('year', '=', $course->year)
-                ->where('year', '=', $course->year)
-                ->paginate(10);
-            $course['students'] = $students;
-            array_push($newList, $course);
-            
-        }
-        return $newList;
-    }
+    // public function showAll(Request $request)
+    // {
+    //     $year = $request->year;
+    //     $courses = Course::whereHas("semester", function ($q) use ($year) {
+    //         $q->where("year", "=", "$year");
+    //     })->with('instructor')->with('studentsCarry')->select('*')->get();
+    //     $newList = [];
+    //     foreach ($courses as $course) {
+    //         $students = Student::select('*')->where('level', '=', $course->level)
+    //             ->where('year', '=', $course->year)
+    //             ->get();
+    //         $course['students'] = $students;
+    //         array_push($newList, $course);
+    //     }
+    //     return $newList;
+    // }
 
-    public function showYear(Request $request)
-    {
-        $request->validate(['year' => 'required']);
-        $semester = Semester::where('isEnded', '=', false)->first();
-        $id = $semester->id;
-        $courses = Course::select('*')->where('semester_id', "=", $id)->where('year', "=", "$request->year")->get();
 
-        return response($courses, 200);
-    }
+    
     public function create(Request $request)
     {
         $request->validate([
             'name_ar' => 'required',
             'name_en' => 'required',
-            // 'level' => 'required',
+            'level' => 'required',
             'code' => 'required',
             'unit' => 'required',
             'year' => 'required',
+            'semester' =>'required',
             'ins_name' => 'required',
             'success' => 'required',
         ]);
@@ -118,7 +110,7 @@ class CourseController extends Controller
         if ($course !== null && $course->name_en != $request->name_en) {
             return response('المادة موجودة مسبقاً', 409);
         }
-        $semester = Semester::where('isEnded', '=', false)->first();
+        $semester = Semester::where('isEnded', '=', false)->where('number','=',$request->semester)->first();
         $instructor = Instructor::where('name_ar', '=', "$request->ins_name")->first();
         if ($instructor == null) {
             return response("لا يوجد تدريسي بهذا الاسم, الرجاء التأكد", 409);
@@ -128,7 +120,7 @@ class CourseController extends Controller
             'name_ar' => $request->name_ar,
             'name_en' => $request->name_en,
             'instructor_id' => $instructor->id,
-            // 'level' => $request->level,
+            'level' => $request->level,
             'code' => $request->code,
             'semester_id' => $semester->id,
             'unit' => $request->unit,
@@ -173,8 +165,4 @@ class CourseController extends Controller
         }
         return response('تم حذف الكورس بنجاح', 200);
     }
-    public function getCourses($year,$semester){
-             
-    }
-
 }
