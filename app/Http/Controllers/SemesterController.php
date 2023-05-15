@@ -18,6 +18,39 @@ class SemesterController extends Controller
             ->only(['destroy', 'create', 'update']);
     }
 
+    public function create2(Request $request)
+    {
+        $request->validate([
+            'year' => 'required', 
+        ]);
+    
+        // if (!Gate::allows('is-super')) {
+        //     return response('انت غير مخول', 403);
+        // }
+    
+        $year = $request->year;
+    
+        // Create first semester
+        $firstSemester = Semester::create([
+            'isEnded' => false,
+            'number' => 'first',
+            'year' => $year,
+        ]);
+    
+        // Create second semester
+        $secondSemester = Semester::create([
+            'isEnded' => false,
+            'number' => 'second',
+            'year' => $year,
+        ]);
+
+        
+        return response('تم إنشاء الفصلين بنجاح', 200);
+    }
+    
+
+
+
     public function create(Request $request)
     {
         $request->validate([
@@ -148,23 +181,83 @@ class SemesterController extends Controller
         }
 
     }
+
+    public function show2()
+{
+    $semesters = Semester::select("*")
+        ->selectRaw('substr(year, 1, 4) as semyear')
+        ->whereIn("number", ['first', 'second'])
+        ->orderBy("number", "ASC")
+        ->get();
+
+    $groupedSemesters = $semesters->groupBy('semyear');
+
+    $result = [];
+    foreach ($groupedSemesters as $year => $semesters) {
+        $firstSemester = $semesters->where('number', 'first')->first();
+        $secondSemester = $semesters->where('number', 'second')->first();
+
+        $result[] = [
+            'year' => $year,
+            'first_semester' => $firstSemester,
+            'second_semester' => $secondSemester,
+        ];
+    }
+
+    return $result;
+}
     public function show()
     {
         $sem = Semester::select("*")->selectRaw('substr(year,1,4) as first')->where("number", "=", "first")->orderBy("first", "ASC")->get();
         return $sem;
     }
 
-    public function end()
-    {
 
-        $semester = Semester::select("*")->where("isEnded", "=", false)->first();
-        $isEnded = $semester->isEnded;
-        if ($isEnded == 0) {
-            $semester->isEnded = 1;
-            $semester->save();
-        } else {
-            return response('غير مسموح', 409);
-        }
+    public function endSemesters(Request $request)
+{
+    $request->validate([
+        'year' => 'required',
+    ]);
 
+    $year = $request->year;
+
+    $firstSemester = Semester::where('number', 'first')
+        ->where('year', $year)
+        ->where('isEnded', false)
+        ->first();
+
+    $secondSemester = Semester::where('number', 'second')
+        ->where('year', $year)
+        ->where('isEnded', false)
+        ->first();
+
+    if ($firstSemester && $secondSemester) {
+        $firstSemester->isEnded = true;
+        $firstSemester->save();
+
+        $secondSemester->isEnded = true;
+        $secondSemester->save();
+
+        
+    } 
+    
+    else {
+            return response('غير مسموح', 404);
     }
+
+}
+
+    // public function end()
+    // {
+
+    //     $semester = Semester::select("*")->where("isEnded", "=", false)->first();
+    //     $isEnded = $semester->isEnded;
+    //     if ($isEnded == 0) {
+    //         $semester->isEnded = 1;
+    //         $semester->save();
+    //     } else {
+    //         return response('غير مسموح', 409);
+    //     }
+
+    // }
 }
