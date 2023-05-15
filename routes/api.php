@@ -80,11 +80,16 @@ Route::get('/degrees/getyear', [DegreeController::class, 'getYearDegrees']);
 Route::post('/degrees/grad', [DegreeController::class, 'grads']);
 Route::post('/degrees/pass', [DegreeController::class, 'pass']);
 Route::get('/degrees/get/{id}', [DegreeController::class, 'Get']);
+// Route::get('/degrees/master/{year}/{semyear}', [DegreeController::class, 'Master']);
 
 
 Route::post('/semesters/end', [SemesterController::class, 'end']);
+Route::post('/semesters/ended', [SemesterController::class, 'endSemesters']);//new
 Route::post('/semesters/create', [SemesterController::class, 'create']);
+Route::post('/semesters/create2', [SemesterController::class, 'create2']);//new
 Route::get('/semesters/get', [SemesterController::class, 'show']);
+Route::get('/semesters/get2', [SemesterController::class, 'show2']);//new
+
 
 Route::post('users/login', [UserController::class, 'login']);
 Route::post('users/create', [UserController::class, 'create']);
