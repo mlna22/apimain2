@@ -21,35 +21,120 @@ class SemesterController extends Controller
     public function create2(Request $request)
     {
         $request->validate([
-            'year' => 'required', 
+            'year' => 'required',
         ]);
     
         // if (!Gate::allows('is-super')) {
         //     return response('انت غير مخول', 403);
-        // }
-    
-        $year = $request->year;
+        //}
     
         // Create first semester
         $firstSemester = Semester::create([
             'isEnded' => false,
-            'number' => 'first',
-            'year' => $year,
+            'year' => $request->year,
         ]);
+    
+        // Store the id of the first semester
+        $firstSemesterId = $firstSemester->id;
     
         // Create second semester
         $secondSemester = Semester::create([
             'isEnded' => false,
-            'number' => 'second',
-            'year' => $year,
+            'year' => $request->year,
         ]);
-
-        
-        return response('تم إنشاء الفصلين بنجاح', 200);
-    }
     
+        // Store the id of the second semester
+        $secondSemesterId = $secondSemester->id;
+    
+        // Retrieve the most recent two semesters
+        $recentSemesters = Semester::select('*')
+            ->selectRaw("SUBSTR(year, 1, 4) AS first")
+            ->whereIn('number', ['first', 'second'])
+            ->orderBy('first', 'DESC')
+            ->take(2)
+            ->get();
+    
+        // Retrieve all courses associated with the semester identified by id
+        $courses = Course::select('*')
+            ->where('semester_id', '=', $recentSemesters->pluck('id'))
+            ->get();
+    
+        foreach ($courses as $course) {
+            $carries = Carry::select("*")->where('course_id', '=', $course->id)->get();
+            if (!$carries->isEmpty()) {
+                $newCourse = Course::create([
+                    'name_ar' => $course->name_ar,
+                    'name_en' => $course->name_en,
+                    'instructor_id' => $course->instructor_id,
+                    'level' => $course->level,
+                    'code' => $course->code,
+                    'semester_id' => $firstSemesterId || $secondSemesterId, // is that true?
+                    'unit' => $course->unit,
+                    'year' => $course->year,
+                    'success' => $course->success,
+                ]);
+                $newCourseId = $newCourse->id;
+                foreach ($carries as $carry) {
+                    $carry->course_id = $newCourseId;
+                    $carry->save();
+                }
+            }
+        }
+        $yearcor = Degree::select("*")
+        ->whereHas("courses", function ($q) use ($newCourse, $recentSemesters) {
+            $q->where("semester_id", "=", $recentSemesters->pluck('id'))
+                ->where("year", "=", $newCourse->year)
+                ->where("id", "!=", $newCourse->id);
+        })
+        ->get();
 
+    foreach ($yearcor as $yearcor) {
+        $oldcourse = Course::select("*")->where("id", "=", $yearcor->course_id)->first();
+        $newcourse = Course::select("*")->where("semester_id", "=", $firstSemesterId || $secondSemesterId)->where("name_en", "=", $oldcourse->name_en)->first();
+        if ($newcourse == null) {
+            $newcourse = Course::create([
+                'name_ar' => $oldcourse->name_ar,
+                'name_en' => $oldcourse->name_en,
+                'instructor_id' => $oldcourse->instructor_id,
+                'level' => $oldcourse->level,
+                'code' => $oldcourse->code,
+                'semester_id'=> $firstSemesterId || $secondSemesterId, // Change to the desired semester id
+                'unit' => $oldcourse->unit,
+                'year' => $oldcourse->year,
+                'success' => $oldcourse->success,
+            ]);
+            $newdeg = Degree::create([
+                "student_id" => $yearcor->student_id,
+                "course_id" => $newcourse->id,
+                "fourty" => $yearcor->fourty,
+                "sixty1" => $yearcor->sixty1,
+                "sixty2" => $yearcor->sixty2,
+                "sixty3" => $yearcor->sixty3,
+                "final1" => $yearcor->final1,
+                "final2" => $yearcor->final2,
+                "final3" => $yearcor->final3,
+                "sts" => $yearcor->sts,
+                "approx" => $yearcor->approx,
+                "isOld" => true,
+            ]);
+            $help = Helps::select("*")->where("degree_id", "=", $yearcor->id)->get();
+            if (!$help->isEmpty()) {
+                foreach ($help as $help) {
+                    Helps::create([
+                        "degree_id" => $newdeg->id,
+                        "amt" => $help->amt,
+                        "source" => $help->source
+                    ]);
+                }
+            }
+        }
+    }
 
+    return response('تم إنشاء الفصلين بنجاح', 200);
+}
+
+            
+     
 
     public function create(Request $request)
     {
@@ -63,7 +148,7 @@ class SemesterController extends Controller
         if (!Gate::allows('is-super')) {
             return response('انت غير مخول', 403);
         }
-        if ($isEnded == 1 && $number == "first") {
+        if ($isEnded == 1 && $number == "first" && $number == "seecond") {
 
             if ($semester->year != $request->year) {
                 return response("لا يوجد فصل اول لهذه السنة الدراسية", 410);
@@ -187,8 +272,7 @@ class SemesterController extends Controller
     $semesters = Semester::select("*")
         ->selectRaw('substr(year, 1, 4) as semyear')
         ->whereIn("number", ['first', 'second'])
-        ->orderBy("number", "ASC")
-        ->get();
+        ->orderBy("number", "ASC")->get();
 
     $groupedSemesters = $semesters->groupBy('semyear');
 
